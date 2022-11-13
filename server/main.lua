@@ -1,11 +1,11 @@
 local QRCore = exports['qr-core']:GetCoreObject()
 
 RegisterServerEvent('qr-stables:server:buyHorse')
-AddEventHandler('qb-stables:server:buyHorse', function(price, model)
+AddEventHandler('qr-stables:server:buyHorse', function(price, model)
     local src = source
     local Player = QRCore.Functions.GetPlayer(src)
     if (Player.PlayerData.money.cash < price) then
-        TriggerClientEvent('qb_notifi:ShowTopNotification', src, "Stable", "You dont have enough money", 1000)
+        print("buy a horse")
         return
     end
 
@@ -16,7 +16,7 @@ AddEventHandler('qb-stables:server:buyHorse', function(price, model)
         ['@active'] = true,
     })
     Player.Functions.RemoveMoney('cash', price)
-    -- TriggerClientEvent('qr_notifi:ShowTopNotification', src, "Stable", "You have successfully bought a horse")
+    print("You have successfully bought a horse")
 end)
 
 
