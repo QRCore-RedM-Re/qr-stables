@@ -4,9 +4,10 @@ local timeout = false
 local timeoutTimer = 30
 local horsePed = 0
 local horseSpawned = false
+local HorseCalled = false
 local QRCore = exports['qr-core']:GetCoreObject()
 
-function handleExports()
+function handleExports(name)
     for k,v in pairs(Config.BoxZones) do
         for j, n in pairs(v) do
             Wait(100)
@@ -21,17 +22,17 @@ function handleExports()
             end
             table.insert(entities, entity)
             Citizen.InvokeNative(0x283978A15512B2FE, entity, true)
+            FreezeEntityPosition(entity, true)
             SetEntityCanBeDamaged(entity, false)
             SetEntityInvincible(entity, true)
-            Wait(100)
             exports['qr-target']:AddTargetEntity(entity, {
                 options = {
                     {
                         icon = "fas fa-horse-head",
-                        label = "Buy horse " .. n.price .. "$",
+                        label =  n.names.." || " .. n.price ..  "$",
                         targeticon = "fas fa-eye",
                         action = function()
-                            TriggerServerEvent('qr-stables:server:buyHorse', n.price, n.model)
+                            TriggerServerEvent('qr-stables:server:BuyHorse', n.price, n.model, n.names)
                         end
                     }
                 },
@@ -64,7 +65,23 @@ function handleExports()
                     label = "Get your horse",
                     targeticon = "fas fa-eye",
                     action = function()
-                        exports['qr-stables']:spawnHorse(key)
+                        TriggerEvent("qr-stables:client:menu")
+                    end
+                },
+                {
+                    icon = "fas fa-horse-head",
+                    label = "Store Horse",
+                    targeticon = "fas fa-eye",
+                    action = function()
+                        TriggerEvent("qr-stables:client:storehorse")
+                    end
+                },
+                {
+                    icon = "fas fa-horse-head",
+                    label = "Delete your horse",
+                    targeticon = "fas fa-eye",
+                    action = function()
+                        TriggerEvent("qr-stables:client:MenuDel")
                     end
                 }
             },
@@ -77,20 +94,22 @@ end
 
 Citizen.CreateThread(handleExports)
 
-function handleSpawnHorse(playerLocation)
-    QRCore.Functions.TriggerCallback('qr-stables:server:getActiveHorse', function(data)
+local function SpawnHorse()
+    QRCore.Functions.TriggerCallback('qr-stables:server:GetActiveHorse', function(data)
         if (data) then
+            local ped = PlayerPedId()
             local model = GetHashKey(data.horse)
-            local location = Config.ModelSpawns[playerLocation]
+            local location = GetEntityCoords(ped)
+            local howfar = math.random(50,100)
             if (location) then
                 while not HasModelLoaded(model) do
                     RequestModel(model)
                     Wait(10)
                 end
-                local coords = location.horseCoords
-                local heading = location.horseHeading
+                local coords = GetEntityCoords(ped)
+                local heading = 300
                 if (horsePed == 0) then
-                    horsePed = CreatePed(model, coords.x, coords.y, coords.z, heading, true, true, 0, 0)
+                    horsePed = CreatePed(model, coords.x -howfar , coords.y, coords.z, heading, true, true, 0, 0)
                     while not DoesEntityExist(horsePed) do
                         Wait(10)
                     end
@@ -110,6 +129,9 @@ function handleSpawnHorse(playerLocation)
         end
     end)
 end
+
+
+exports('spawnHorse', handleSpawnHorse)
 
 function applyImportantThings()
     Citizen.InvokeNative(0x931B241409216C1F, PlayerPedId(), horsePed, 0)
@@ -150,7 +172,6 @@ function getControlOfEntity(entity)
         Wait(100)
         timeout = timeout - 100
     end
-    print('We have control of entity')
     return NetworkHasControlOfEntity(entity)
 end
 
@@ -168,19 +189,33 @@ Citizen.CreateThread(function()
     end
 end)
 
-Citizen.CreateThread(function()
+
+local function Flee()
+    TaskAnimalFlee(horsePed, PlayerPedId(), -1)
+    Wait(10000)
+    DeleteEntity(horsePed)
+    Wait(1000)
+    horsePed = 0
+end
+
+CreateThread(function()
     while true do
-        Wait(10)
-        if (not timeout) then
-            if IsControlJustReleased(0, 0x24978A28) then
-                timeout = true
-                spawnHorse()
-            end
-        end
+        Wait(1)
+        if Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.Keybinds['H']) then -- call horse
+            if not HorseCalled then
+			SpawnHorse()
+            HorseCalled = true
+			Wait(10000) -- Spam protect
+     else
+        moveHorseToPlayer()
+         end
+    elseif Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.Keybinds['HorseCommandFlee']) then -- flee horse
+		    if horseSpawned ~= 0 then
+			    Flee()
+		    end
+		end
     end
 end)
-
-exports('spawnHorse', handleSpawnHorse)
 
 AddEventHandler('onResourceStop', function(resource)
     if (resource == GetCurrentResourceName()) then
@@ -199,4 +234,117 @@ AddEventHandler('onResourceStop', function(resource)
             SetEntityAsNoLongerNeeded(horsePed)
         end
     end
+end)
+
+CreateThread(function()
+    for key,value in pairs(Config.ModelSpawns) do
+        local StablesBlip = N_0x554d9d53f696d002(1664425300, value.coords)
+        SetBlipSprite(StablesBlip, 1938782895, 52)
+        SetBlipScale(StablesBlip, 0.1)
+        Citizen.InvokeNative(0x9CB1A1623062F402, tonumber(StablesBlip), "Horse Stable")
+    end
+end)
+
+local HorseId = nil
+
+RegisterNetEvent('qr-stables:client:SpawnHorse', function(data)
+    HorseId = data.player.id
+    TriggerServerEvent("qr-stables:server:SetHoresActive", data.player.id)
+    QRCore.Functions.Notify('Horse has been set active call from back by whistling', 'success', 7500)
+end)
+
+RegisterNetEvent("qr-stables:client:storehorse", function(data)
+ if (horsePed ~= 0) then
+    TriggerServerEvent("qr-stables:server:SetHoresUnActive", HorseId)
+    QRCore.Functions.Notify('Taking your horse to the back', 'success', 7500)
+    Flee()
+    Wait(10000)
+    DeletePed(horsePed)
+    SetEntityAsNoLongerNeeded(horsePed)
+    HorseCalled = false
+    end
+end)
+
+RegisterNetEvent('qr-stables:client:menu', function()
+    local GetHorse = {
+        {
+            header = "| My Horses |",
+            isMenuHeader = true,
+            icon = "fa-solid fa-circle-user",
+        },
+    }
+    QRCore.Functions.TriggerCallback('qr-stables:server:GetHorse', function(cb)
+        for _, v in pairs(cb) do
+            GetHorse[#GetHorse + 1] = {
+                header = v.name,
+                txt = "select you horse",
+                icon = "fa-solid fa-circle-user",
+                params = {
+                    event = "qr-stables:client:SpawnHorse",
+                    args = {
+                        player = v,
+                        active = 1
+                    }
+                }
+            }
+        end
+        exports['qr-menu']:openMenu(GetHorse)
+    end)
+end)
+
+RegisterNetEvent('qr-stables:client:MenuDel', function()
+    local GetHorse = {
+        {
+            header = "| Delete Horses |",
+            isMenuHeader = true,
+            icon = "fa-solid fa-circle-user",
+        },
+    }
+    QRCore.Functions.TriggerCallback('qr-stables:server:GetHorse', function(cb)
+        for _, v in pairs(cb) do
+            GetHorse[#GetHorse + 1] = {
+                header = v.name,
+                txt = "Delete you horse",
+                icon = "fa-solid fa-circle-user",
+                params = {
+                    event = "qr-stables:client:MenuDelC",
+                    args = {}
+                }
+            }
+        end
+        exports['qr-menu']:openMenu(GetHorse)
+    end)
+end)
+
+
+RegisterNetEvent('qr-stables:client:MenuDelC', function(data)
+    local GetHorse = {
+        {
+            header = "| Confirm Delete Horses |",
+            isMenuHeader = true,
+            icon = "fa-solid fa-circle-user",
+        },
+    }
+    QRCore.Functions.TriggerCallback('qr-stables:server:GetHorse', function(cb)
+        for _, v in pairs(cb) do
+            GetHorse[#GetHorse + 1] = {
+                header = v.name,
+                txt = "Doing this will make you lose your horse forever!",
+                icon = "fa-solid fa-circle-user",
+                params = {
+                    event = "qr-stables:client:DeleteHorse",
+                    args = {
+                        player = v,
+                        active = 1
+                    }
+                }
+            }
+        end
+        exports['qr-menu']:openMenu(GetHorse)
+    end)
+end)
+
+RegisterNetEvent('qr-stables:client:DeleteHorse', function(data)
+    QRCore.Functions.Notify('Horse has been successfully removed', 'success', 7500)
+    TriggerServerEvent("qr-stables:server:DelHores", data.player.id)
 end)
