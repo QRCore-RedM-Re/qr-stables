@@ -196,6 +196,7 @@ local function Flee()
     DeleteEntity(horsePed)
     Wait(1000)
     horsePed = 0
+    HorseCalled = false
 end
 
 CreateThread(function()
