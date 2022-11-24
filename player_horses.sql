@@ -6,4 +6,4 @@ CREATE TABLE IF NOT EXISTS `player_horses` (
   `components` varchar(50) DEFAULT NULL,
   `active` tinyint(4) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
