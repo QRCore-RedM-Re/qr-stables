@@ -4,7 +4,7 @@ RegisterServerEvent('qr-stables:server:BuyHorse', function(price, model, names)
     local src = source
     local Player = QRCore.Functions.GetPlayer(src)
     if (Player.PlayerData.money.cash < price) then
-        print("buy a horse")
+        TriggerClientEvent('QRCore:Notify', src, 'You don\'t have enough cash!', 'error')
         return
     end
     MySQL.insert('INSERT INTO player_horses(citizenid, name, horse, components, active) VALUES(@citizenid, @name, @horse, @components, @active)', {
@@ -15,7 +15,7 @@ RegisterServerEvent('qr-stables:server:BuyHorse', function(price, model, names)
         ['@active'] = false,
     })
     Player.Functions.RemoveMoney('cash', price)
-    print("You have successfully bought a horse")
+    TriggerClientEvent('QRCore:Notify', src, 'You have successfully bought a horse', 'success')
 end)
 
 RegisterServerEvent('qr-stables:server:SetHoresActive', function(id)
