@@ -202,7 +202,7 @@ end
 CreateThread(function()
     while true do
         Wait(1)
-        if Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.Keybinds['H']) then -- call horse
+        if Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.GetKey('H')) then -- call horse
             if not HorseCalled then
 			SpawnHorse()
             HorseCalled = true
@@ -210,7 +210,7 @@ CreateThread(function()
      else
         moveHorseToPlayer()
          end
-    elseif Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.Keybinds['HorseCommandFlee']) then -- flee horse
+    elseif Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.GetKey('HorseCommandFlee')) then -- flee horse
 		    if horseSpawned ~= 0 then
 			    Flee()
 		    end
