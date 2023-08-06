@@ -40,29 +40,25 @@ RegisterServerEvent('qr-stables:server:DelHores', function(id)
     MySQL.update('DELETE FROM player_horses WHERE id = ? AND citizenid = ?', { id, Player.PlayerData.citizenid })
 end)
 
-QRCore.Functions.CreateCallback('qr-stables:server:GetHorse', function(source, cb)
+lib.callback.register('qr-stables:server:GetHorse', function(source)
 	local src = source
 	local Player = QRCore.Functions.GetPlayer(src)
+    local callback = nil
 	local GetHorse = {}
-	local horses = MySQL.query.await('SELECT * FROM player_horses WHERE citizenid=@citizenid', {
-        ['@citizenid'] = Player.PlayerData.citizenid,
-    })    
-	if horses[1] ~= nil then
-        cb(horses)
-	end
+	local horses = MySQL.query.await('SELECT * FROM player_horses WHERE citizenid=@citizenid', { ['@citizenid'] = Player.PlayerData.citizenid })
+	if horses[1] ~= nil then callback = horses end
+    return callback
 end)
 
-QRCore.Functions.CreateCallback('qr-stables:server:GetActiveHorse', function(source, cb)
+lib.callback.register('qr-stables:server:GetActiveHorse', function(source)
     local src = source
     local Player = QRCore.Functions.GetPlayer(src)
     local cid = Player.PlayerData.citizenid
+    local callback = false
     local result = MySQL.query.await('SELECT * FROM player_horses WHERE citizenid=@citizenid AND active=@active', {
         ['@citizenid'] = cid,
         ['@active'] = 1
     })
-    if (result[1] ~= nil) then
-        cb(result[1])
-    else
-        return
-    end
+    if (result[1] ~= nil) then callback = result[1] end
+    return callback
 end)
