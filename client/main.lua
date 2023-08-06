@@ -12,14 +12,9 @@ function handleExports(name)
         for j, n in pairs(v) do
             Wait(100)
             local model = GetHashKey(n.model)
-            while (not HasModelLoaded(model)) do
-                RequestModel(model)
-                Wait(10)
-            end
+            while not HasModelLoaded(model) do RequestModel(model) Wait(10) end
             local entity = CreatePed(model, n.coords.x, n.coords.y, n.coords.z - 1.0, n.heading, true, true, 0, 0)
-            while not DoesEntityExist(entity) do
-                Wait(10)
-            end
+            while not DoesEntityExist(entity) do Wait(10) end
             table.insert(entities, entity)
             Citizen.InvokeNative(0x283978A15512B2FE, entity, true)
             FreezeEntityPosition(entity, true)
@@ -43,14 +38,9 @@ function handleExports(name)
     end
 
     for key,value in pairs(Config.ModelSpawns) do
-        while not HasModelLoaded(value.model) do
-            RequestModel(value.model)
-            Wait(10)
-        end
+        while not HasModelLoaded(value.model) do RequestModel(value.model) Wait(10) end
         local ped = CreatePed(value.model, value.coords.x, value.coords.y, value.coords.z - 1.0, value.heading, true, true, 0, 0)
-        while not DoesEntityExist(ped) do
-            Wait(10)
-        end
+        while not DoesEntityExist(ped) do Wait(10) end
 
         Citizen.InvokeNative(0x283978A15512B2FE, ped, true)
         SetEntityCanBeDamaged(ped, false)
@@ -92,7 +82,7 @@ function handleExports(name)
     end
 end
 
-Citizen.CreateThread(handleExports)
+CreateThread(handleExports)
 
 local function SpawnHorse()
     QRCore.Functions.TriggerCallback('qr-stables:server:GetActiveHorse', function(data)
@@ -102,17 +92,12 @@ local function SpawnHorse()
             local location = GetEntityCoords(ped)
             local howfar = math.random(50,100)
             if (location) then
-                while not HasModelLoaded(model) do
-                    RequestModel(model)
-                    Wait(10)
-                end
+                while not HasModelLoaded(model) do RequestModel(model) Wait(10) end
                 local coords = GetEntityCoords(ped)
                 local heading = 300
                 if (horsePed == 0) then
                     horsePed = CreatePed(model, coords.x -howfar , coords.y, coords.z, heading, true, true, 0, 0)
-                    while not DoesEntityExist(horsePed) do
-                        Wait(10)
-                    end
+                    while not DoesEntityExist(horsePed) do Wait(10) end
                     getControlOfEntity(horsePed)
                     Citizen.InvokeNative(0x283978A15512B2FE, horsePed, true)
                     Citizen.InvokeNative(0x23F74C2FDA6E7C61, -1230993421, horsePed)
@@ -267,82 +252,80 @@ RegisterNetEvent("qr-stables:client:storehorse", function(data)
 end)
 
 RegisterNetEvent('qr-stables:client:menu', function()
-    local GetHorse = {
-        {
-            header = "| My Horses |",
-            isMenuHeader = true,
-            icon = "fa-solid fa-circle-user",
-        },
-    }
-    QRCore.Functions.TriggerCallback('qr-stables:server:GetHorse', function(cb)
-        for _, v in pairs(cb) do
+    local GetHorse = {}
+    local horses = lib.callback.await('qr-stables:server:GetHorse', false)
+    if horses then
+        for _, v in pairs(horses) do
             GetHorse[#GetHorse + 1] = {
-                header = v.name,
-                txt = "select you horse",
+                title = v.name,
                 icon = "fa-solid fa-circle-user",
-                params = {
-                    event = "qr-stables:client:SpawnHorse",
-                    args = {
-                        player = v,
-                        active = 1
-                    }
-                }
+                event = "qr-stables:client:SpawnHorse",
+                args = { player = v, active = 1 }
             }
         end
-        exports['qr-menu']:openMenu(GetHorse)
-    end)
+    else
+        GetHorse[#GetHorse + 1] = {
+            title = 'No Horses Available',
+            icon = "fas fa-ban",
+        }
+    end
+
+    lib.registerContext({
+        id = 'stables_menu',
+        title = '| My Horses |',
+        options = GetHorse
+    })
+    lib.showContext('stables_menu')
 end)
 
 RegisterNetEvent('qr-stables:client:MenuDel', function()
-    local GetHorse = {
-        {
-            header = "| Delete Horses |",
-            isMenuHeader = true,
-            icon = "fa-solid fa-circle-user",
-        },
-    }
-    QRCore.Functions.TriggerCallback('qr-stables:server:GetHorse', function(cb)
-        for _, v in pairs(cb) do
+    local GetHorse = {}
+    local horses = lib.callback.await('qr-stables:server:GetHorse', false)
+
+    if horses then
+        for _, v in pairs(horses) do
             GetHorse[#GetHorse + 1] = {
-                header = v.name,
-                txt = "Delete you horse",
+                title = v.name,
+                description = "Delete Horse",
                 icon = "fa-solid fa-circle-user",
-                params = {
-                    event = "qr-stables:client:MenuDelC",
-                    args = {}
-                }
+                event = "qr-stables:client:MenuDelC",
             }
         end
-        exports['qr-menu']:openMenu(GetHorse)
-    end)
+    else
+        GetHorse[#GetHorse + 1] = {
+            title = 'No Horses Available',
+            icon = "fas fa-ban",
+        }
+    end
+
+    lib.registerContext({
+        id = 'stables_menu_delete',
+        title = '| Delete Horses |',
+        options = GetHorse
+    })
+    lib.showContext('stables_menu_delete')
 end)
 
 
 RegisterNetEvent('qr-stables:client:MenuDelC', function(data)
-    local GetHorse = {
-        {
-            header = "| Confirm Delete Horses |",
-            isMenuHeader = true,
+    local GetHorse = {}
+    local horses = lib.callback.await('qr-stables:server:GetHorse', false)
+    for _, v in pairs(horses) do
+        GetHorse[#GetHorse + 1] = {
+            title = v.name,
+            description = "Doing this will make you lose your horse forever!",
             icon = "fa-solid fa-circle-user",
-        },
-    }
-    QRCore.Functions.TriggerCallback('qr-stables:server:GetHorse', function(cb)
-        for _, v in pairs(cb) do
-            GetHorse[#GetHorse + 1] = {
-                header = v.name,
-                txt = "Doing this will make you lose your horse forever!",
-                icon = "fa-solid fa-circle-user",
-                params = {
-                    event = "qr-stables:client:DeleteHorse",
-                    args = {
-                        player = v,
-                        active = 1
-                    }
-                }
-            }
-        end
-        exports['qr-menu']:openMenu(GetHorse)
-    end)
+            event = "qr-stables:client:DeleteHorse",
+            args = { player = v, active = 1 }
+        }
+    end
+
+    lib.registerContext({
+        id = 'stables_menu_delete_confirm',
+        title = '| Confirm Delete Horses |',
+        options = GetHorse
+    })
+    lib.showContext('stables_menu_delete_confirm')
 end)
 
 RegisterNetEvent('qr-stables:client:DeleteHorse', function(data)
