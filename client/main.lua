@@ -6,14 +6,16 @@ local horsePed = 0
 local horseSpawned = false
 local HorseCalled = false
 
-function handleExports(name)
-    for k,v in pairs(Config.BoxZones) do
-        for j, n in pairs(v) do
+local function handleExports(name)
+    for _, v in pairs(Config.BoxZones) do
+        for _, n in pairs(v) do
             Wait(100)
             local model = GetHashKey(n.model)
-            while not HasModelLoaded(model) do RequestModel(model) Wait(10) end
+            lib.requestModel(model, 1500)
+
             local entity = CreatePed(model, n.coords.x, n.coords.y, n.coords.z - 1.0, n.heading, true, true, 0, 0)
             while not DoesEntityExist(entity) do Wait(10) end
+
             table.insert(entities, entity)
             Citizen.InvokeNative(0x283978A15512B2FE, entity, true)
             FreezeEntityPosition(entity, true)
@@ -36,8 +38,9 @@ function handleExports(name)
         end
     end
 
-    for key,value in pairs(Config.ModelSpawns) do
-        while not HasModelLoaded(value.model) do RequestModel(value.model) Wait(10) end
+    for _, v in pairs(Config.ModelSpawns) do
+        lib.requestModel(v.model, 1500)
+
         local ped = CreatePed(value.model, value.coords.x, value.coords.y, value.coords.z - 1.0, value.heading, true, true, 0, 0)
         while not DoesEntityExist(ped) do Wait(10) end
 
@@ -84,41 +87,40 @@ end
 CreateThread(handleExports)
 
 local function SpawnHorse()
-    QRCore.Functions.TriggerCallback('qr-stables:server:GetActiveHorse', function(data)
+    lib.callback('qr-stables:server:GetActiveHorse', false, function(data)
         if (data) then
-            local ped = PlayerPedId()
             local model = GetHashKey(data.horse)
-            local location = GetEntityCoords(ped)
-            local howfar = math.random(50,100)
-            if (location) then
-                while not HasModelLoaded(model) do RequestModel(model) Wait(10) end
-                local coords = GetEntityCoords(ped)
+            local location = GetEntityCoords(cache.ped)
+            if location then
+                lib.requestModel(model, 1500)
+
+                local coords = GetEntityCoords(cache.ped)
                 local heading = 300
-                if (horsePed == 0) then
-                    horsePed = CreatePed(model, coords.x -howfar , coords.y, coords.z, heading, true, true, 0, 0)
-                    while not DoesEntityExist(horsePed) do Wait(10) end
-                    getControlOfEntity(horsePed)
-                    Citizen.InvokeNative(0x283978A15512B2FE, horsePed, true)
-                    Citizen.InvokeNative(0x23F74C2FDA6E7C61, -1230993421, horsePed)
-                    local hasp = GetHashKey("PLAYER")
-                    Citizen.InvokeNative(0xADB3F206518799E8, horsePed, hasp)
-                    Citizen.InvokeNative(0xCC97B29285B1DC3B, horsePed, 1)
-                    Citizen.InvokeNative(0x931B241409216C1F , PlayerPedId(), horsePed , 0)
-                    SetModelAsNoLongerNeeded(model)
-                    horseSpawned = true
-                    moveHorseToPlayer()
-                    applyImportantThings()
-                end
+                if horsePed ~= 0 then return end
+
+                horsePed = CreatePed(model, coords.x - math.random(50,100), coords.y, coords.z, heading, true, true, 0, 0)
+                while not DoesEntityExist(horsePed) do Wait(10) end
+
+                getControlOfEntity(horsePed)
+                Citizen.InvokeNative(0x283978A15512B2FE, horsePed, true)
+                Citizen.InvokeNative(0x23F74C2FDA6E7C61, -1230993421, horsePed)
+                local hasp = GetHashKey("PLAYER")
+                Citizen.InvokeNative(0xADB3F206518799E8, horsePed, hasp)
+                Citizen.InvokeNative(0xCC97B29285B1DC3B, horsePed, 1)
+                Citizen.InvokeNative(0x931B241409216C1F , cache.ped, horsePed , 0)
+                SetModelAsNoLongerNeeded(model)
+                horseSpawned = true
+                moveHorseToPlayer()
+                applyImportantThings()
             end
         end
     end)
 end
 
-
-exports('spawnHorse', handleSpawnHorse)
+exports('spawnHorse', SpawnHorse)
 
 function applyImportantThings()
-    Citizen.InvokeNative(0x931B241409216C1F, PlayerPedId(), horsePed, 0)
+    Citizen.InvokeNative(0x931B241409216C1F, cache.ped, horsePed, 0)
     SetPedConfigFlag(horsePed, 297, true)
     Citizen.InvokeNative(0xD3A7B003ED343FD9, horsePed,0x20359E53,true,true,true) --saddle
     Citizen.InvokeNative(0xD3A7B003ED343FD9, horsePed,0x508B80B9,true,true,true) --blanket
@@ -129,13 +131,13 @@ end
 
 function moveHorseToPlayer()
     Citizen.CreateThread(function()
-        Citizen.InvokeNative(0x6A071245EB0D1882, horsePed, PlayerPedId(), -1, 5.0, 15.0, 0, 0)
+        Citizen.InvokeNative(0x6A071245EB0D1882, horsePed, cache.ped, -1, 5.0, 15.0, 0, 0)
         while horseSpawned == true do
-            local coords = GetEntityCoords(PlayerPedId())
+            local coords = GetEntityCoords(cache.ped)
             local horseCoords = GetEntityCoords(horsePed)
             local distance = #(coords - horseCoords)
             if (distance < 5.0) then
-                ClearPedTasksImmediately(horsePed, true, true)
+                ClearPedTasksImmediately(horsePed)
                 horseSpawned = false
             end
             Wait(1000)
@@ -175,7 +177,7 @@ end)
 
 
 local function Flee()
-    TaskAnimalFlee(horsePed, PlayerPedId(), -1)
+    TaskAnimalFlee(horsePed, cache.ped, -1)
     Wait(10000)
     DeleteEntity(horsePed)
     Wait(1000)
@@ -188,42 +190,41 @@ CreateThread(function()
         Wait(1)
         if Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.GetKey('H')) then -- call horse
             if not HorseCalled then
-			SpawnHorse()
-            HorseCalled = true
-			Wait(10000) -- Spam protect
-     else
-        moveHorseToPlayer()
-         end
-    elseif Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.GetKey('HorseCommandFlee')) then -- flee horse
-		    if horseSpawned ~= 0 then
-			    Flee()
-		    end
+                SpawnHorse()
+                HorseCalled = true
+                Wait(10000) -- Spam protect
+            else
+                moveHorseToPlayer()
+            end
+        elseif Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.GetKey('HorseCommandFlee')) then -- flee horse
+            if horseSpawned ~= 0 then
+                Flee()
+            end
 		end
     end
 end)
 
 AddEventHandler('onResourceStop', function(resource)
-    if (resource == GetCurrentResourceName()) then
-        for k,v in pairs(entities) do
-            DeletePed(v)
-            SetEntityAsNoLongerNeeded(v)
-        end
+    if resource ~= GetCurrentResourceName() then return end
+    for _, v in pairs(entities) do
+        DeletePed(v)
+        SetEntityAsNoLongerNeeded(v)
+    end
 
-        for k,v in pairs(npcs) do
-            DeletePed(v)
-            SetEntityAsNoLongerNeeded(v)
-        end
+    for _, v in pairs(npcs) do
+        DeletePed(v)
+        SetEntityAsNoLongerNeeded(v)
+    end
 
-        if (horsePed ~= 0) then
-            DeletePed(horsePed)
-            SetEntityAsNoLongerNeeded(horsePed)
-        end
+    if horsePed ~= 0 then
+        DeletePed(horsePed)
+        SetEntityAsNoLongerNeeded(horsePed)
     end
 end)
 
 CreateThread(function()
-    for key,value in pairs(Config.ModelSpawns) do
-        local StablesBlip = N_0x554d9d53f696d002(1664425300, value.coords)
+    for _, v in pairs(Config.ModelSpawns) do
+        local StablesBlip = N_0x554d9d53f696d002(1664425300, v.coords)
         SetBlipSprite(StablesBlip, 1938782895, 52)
         SetBlipScale(StablesBlip, 0.1)
         Citizen.InvokeNative(0x9CB1A1623062F402, tonumber(StablesBlip), "Horse Stable")
@@ -239,20 +240,21 @@ RegisterNetEvent('qr-stables:client:SpawnHorse', function(data)
 end)
 
 RegisterNetEvent("qr-stables:client:storehorse", function(data)
- if (horsePed ~= 0) then
-    TriggerServerEvent("qr-stables:server:SetHoresUnActive", HorseId)
-    QRCore.Functions.Notify('Taking your horse to the back', 'success', 7500)
-    Flee()
-    Wait(10000)
-    DeletePed(horsePed)
-    SetEntityAsNoLongerNeeded(horsePed)
-    HorseCalled = false
+    if horsePed ~= 0 then
+        TriggerServerEvent("qr-stables:server:SetHoresUnActive", HorseId)
+        QRCore.Functions.Notify('Taking your horse to the back', 'success', 7500)
+        Flee()
+        Wait(10000)
+        DeletePed(horsePed)
+        SetEntityAsNoLongerNeeded(horsePed)
+        HorseCalled = false
     end
 end)
 
 RegisterNetEvent('qr-stables:client:menu', function()
     local GetHorse = {}
     local horses = lib.callback.await('qr-stables:server:GetHorse', false)
+
     if horses then
         for _, v in pairs(horses) do
             GetHorse[#GetHorse + 1] = {
@@ -304,7 +306,6 @@ RegisterNetEvent('qr-stables:client:MenuDel', function()
     })
     lib.showContext('stables_menu_delete')
 end)
-
 
 RegisterNetEvent('qr-stables:client:MenuDelC', function(data)
     local GetHorse = {}
