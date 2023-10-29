@@ -1,5 +1,3 @@
-local QRCore = exports['qr-core']:GetCoreObject()
-
 RegisterServerEvent('qr-stables:server:BuyHorse', function(price, model, names)
     local src = source
     local Player = QRCore.Functions.GetPlayer(src)
@@ -59,6 +57,6 @@ lib.callback.register('qr-stables:server:GetActiveHorse', function(source)
         ['@citizenid'] = cid,
         ['@active'] = 1
     })
-    if (result[1] ~= nil) then callback = result[1] end
+    if result[1] then callback = result[1] end
     return callback
 end)

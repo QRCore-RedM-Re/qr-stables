@@ -94,8 +94,8 @@ Config.BoxZones = {
             ["price"] = 1000,
             ["names"] = "Arabian Black",
         },
-        
     },
+
     ["Rodes"] = {
         [1] = {
             ["coords"] = vector3(1435.13, -1286.63, 77.82),
@@ -132,8 +132,8 @@ Config.BoxZones = {
             ["price"] = 1000,
             ["names"] = "Arabian Black",
         },
-        
     },
+
     ["SaintDenis"] = {
         [1] = {
             ["coords"] = vector3(2508.47, -1438.03, 46.41),
@@ -177,8 +177,8 @@ Config.BoxZones = {
             ["price"] = 1000,
             ["names"] = "Arabian Black",
         },
-        
     },
+
     ["EmeraldRanchFence"] = {
         [1] = {
             ["coords"] = vector3(1377.71, 356.26, 87.85),
@@ -215,9 +215,7 @@ Config.BoxZones = {
             ["price"] = 1000,
             ["names"] = "Arabian Black",
         },
-        
     }
-
 }
 
-
+QRCore = exports['qr-core']:GetCoreObject()

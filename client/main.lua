@@ -5,7 +5,6 @@ local timeoutTimer = 30
 local horsePed = 0
 local horseSpawned = false
 local HorseCalled = false
-local QRCore = exports['qr-core']:GetCoreObject()
 
 function handleExports(name)
     for k,v in pairs(Config.BoxZones) do
