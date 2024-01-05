@@ -185,24 +185,25 @@ local function Flee()
     HorseCalled = false
 end
 
-CreateThread(function()
-    while true do
-        Wait(1)
-        if Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.GetKey('H')) then -- call horse
-            if not HorseCalled then
-                SpawnHorse()
-                HorseCalled = true
-                Wait(10000) -- Spam protect
-            else
-                moveHorseToPlayer()
-            end
-        elseif Citizen.InvokeNative(0x91AEF906BCA88877, 0, QRCore.Shared.GetKey('HorseCommandFlee')) then -- flee horse
-            if horseSpawned ~= 0 then
-                Flee()
-            end
-		end
-    end
-end)
+RegisterCommand("callhorse", function()
+	if not HorseCalled then
+		SpawnHorse()
+		HorseCalled = true
+		Wait(1000) -- Spam protect
+	else
+	        moveHorseToPlayer()
+	end
+
+end, false)
+RegisterKeyMapping('callhorse', 'Call Horse', 'keyboard', 'h')
+
+
+RegisterCommand("fleehorse", function()
+	if horseSpawned ~= 0 then
+	   Flee()
+	end
+end, false)
+
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
