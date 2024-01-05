@@ -41,7 +41,7 @@ local function handleExports(name)
     for _, v in pairs(Config.ModelSpawns) do
         lib.requestModel(v.model, 1500)
 
-        local ped = CreatePed(value.model, value.coords.x, value.coords.y, value.coords.z - 1.0, value.heading, true, true, 0, 0)
+        local ped = CreatePed(v.model, v.coords.x, v.coords.y, v.coords.z - 1.0, v.heading, true, true, 0, 0)
         while not DoesEntityExist(ped) do Wait(10) end
 
         Citizen.InvokeNative(0x283978A15512B2FE, ped, true)
@@ -79,7 +79,7 @@ local function handleExports(name)
             },
             distance = 2.5,
         })
-        SetModelAsNoLongerNeeded(value.model)
+        SetModelAsNoLongerNeeded(v.model)
         table.insert(npcs, ped)
     end
 end
